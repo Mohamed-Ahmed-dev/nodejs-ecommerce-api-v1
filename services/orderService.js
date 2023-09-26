@@ -8,6 +8,7 @@ const Factory = require("./handlersFactory");
 const CartModel = require("../models/cartModel");
 const OrderModel = require("../models/orderModel");
 const ProductModel = require("../models/productModel");
+const userModel = require("../models/userModel");
 
 // @desc    Create cash order
 // @route   POST /api/orders/:cartId
@@ -162,13 +163,51 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
     cancel_url: `${req.protocol}://${req.get("host")}/cart`,
     customer_email: req.user.email,
     client_reference_id: req.params.cartId,
-    metadata: req.body.shippingAddress,
+    metadata: req.body.shippingAddressId,
   });
 
   // 4) send session to response
   res.status(200).json({ status: "success", session });
 });
 
+// @desc    Create online order function
+const createOrder = async (session) => {
+  const cartId = session.client_reference_id;
+  const orderPrice = session.amount_total / 100;
+  // 1-get cart using cart Id
+  const cart = await CartModel.findById(cartId);
+
+  // 2-get user
+  const user = await userModel.findOne({ email: session.customer_email });
+
+  // 3-create order with defult payment Method "card"
+  let order;
+  if (cart.cartProducts.length > 0) {
+    order = await OrderModel.create({
+      user: user._id,
+      cartProducts: cart.cartProducts,
+      shippingAddress: session.metadata,
+      totalOrderPrice: orderPrice,
+      isPaid: true,
+      paidAt: Date.now(),
+      paymentMethod: "card",
+    });
+  }
+  // 4-after creating order , decrement quantity and increment sold
+  if (order) {
+    const bulkOption = cart.cartProducts.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+      },
+    }));
+    await ProductModel.bulkWrite(bulkOption, {});
+  }
+  // 5-clear user cart
+  await CartModel.findByIdAndDelete(cartId);
+};
+
+// middleware to get event from stripe
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   const sig = req.headers["stripe-signature"];
 
@@ -185,6 +224,9 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   }
 
   if (event.type === "checkout.session.completed") {
-    console.log("checkout.session.completed");
+    // create order after payment
+    createOrder(event.data.object);
   }
+
+  res.status(200).json({ received: true });
 });
