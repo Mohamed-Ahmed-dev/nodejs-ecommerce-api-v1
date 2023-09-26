@@ -178,7 +178,9 @@ const createOrder = async (session) => {
   const cart = await CartModel.findById(cartId);
 
   // 2-get user
-  const user = await userModel.findOne({ email: session.customer_email });
+  const user = await userModel.findOne({
+    email: session.ession.customer_details.email,
+  });
 
   // 3-create order with defult payment Method "card"
   let order;
@@ -207,7 +209,10 @@ const createOrder = async (session) => {
   await CartModel.findByIdAndDelete(cartId);
 };
 
-// middleware to get event from stripe
+// @desc    this webhook will run when payment completed
+// @route   POST checkout-webhook
+// @access  Private/protected/user
+
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   const sig = req.headers["stripe-signature"];
 
