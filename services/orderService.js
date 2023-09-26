@@ -179,7 +179,7 @@ const createOrder = async (session) => {
 
   // 2-get user
   const user = await userModel.findOne({
-    email: session.ession.customer_details.email,
+    email: session.customer_details.email,
   });
 
   // 3-create order with defult payment Method "card"
