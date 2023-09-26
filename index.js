@@ -9,6 +9,7 @@ const ApiError = require("./utils/apiError");
 const globalError = require("./middlewares/errorMiddleware");
 const dbConnection = require("./config/database");
 const mountRoutes = require("./routes/mountRoutes");
+const { webhookCheckout } = require("./services/orderService");
 
 dotenv.config({ path: "config.env" });
 
@@ -24,6 +25,13 @@ app.options("*", cors());
 
 // compress all responses
 app.use(compression());
+
+// checkout webhook ==> to get the event from stripe
+app.post(
+  "/checkout-webhook",
+  express.raw({ type: "application/json" }),
+  webhookCheckout
+);
 
 // Middlewares
 app.use(express.json());
