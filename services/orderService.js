@@ -163,6 +163,9 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
     cancel_url: `${req.protocol}://${req.get("host")}/cart`,
     customer_email: req.user.email,
     client_reference_id: req.params.cartId,
+    metadata: {
+      addressId: req.body.addressId,
+    },
   });
 
   // 4) send session to response
@@ -183,6 +186,7 @@ const createOrder = async (session) => {
     user: user._id,
     cartProducts: cart.cartProducts,
     // totalOrderPrice: oderPrice,
+    shippingAddress:session.metadata.addressId,
     isPaid: true,
     paidAt: Date.now(),
     paymentMethod: "card",
