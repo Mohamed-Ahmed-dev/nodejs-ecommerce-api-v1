@@ -173,14 +173,19 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // @desc    Create online order function
 const createOrder = async (session) => {
   const cartId = session.client_reference_id;
+  console.log(cartId);
   const orderPrice = session.amount_total / 100;
+  console.log(orderPrice);
+
   // 1-get cart using cart Id
   const cart = await CartModel.findById(cartId);
+  console.log(cart);
 
   // 2-get user
   const user = await userModel.findOne({
     email: session.customer_details.email,
   });
+  console.log(user);
 
   // 3-create order with defult payment Method "card"
   let order;
