@@ -185,22 +185,22 @@ const createOrder = async (session) => {
     // totalOrderPrice: oderPrice,
     isPaid: true,
     paidAt: Date.now(),
-    paymentMethodType: "card",
+    paymentMethod: "card",
   });
 
   // 4) After creating order, decrement product quantity, increment product sold
   if (order) {
-    const bulkOption = cart.cartItems.map((item) => ({
+    const bulkOption = cart.cartProducts.map((item) => ({
       updateOne: {
         filter: { _id: item.product },
         update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
       },
     }));
     await ProductModel.bulkWrite(bulkOption, {});
-
-    // 5) Clear cart depend on cartId
-    await CartModel.findByIdAndDelete(cartId);
   }
+
+  // 5) Clear cart depend on cartId
+  await CartModel.findByIdAndDelete(cart._id);
 };
 
 // @desc    this webhook will run when payment completed
