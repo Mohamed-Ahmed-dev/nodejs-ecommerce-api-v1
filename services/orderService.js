@@ -163,7 +163,6 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
     cancel_url: `${req.protocol}://${req.get("host")}/cart`,
     customer_email: req.user.email,
     client_reference_id: req.params.cartId,
-    metadata: req.body.shippingAddress,
   });
 
   // 4) send session to response
@@ -173,8 +172,8 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // @desc    Create online order function
 const createOrder = async (session) => {
   const cartId = session.client_reference_id;
-  const shippingAddress = session.metadata;
-  const oderPrice = session.amount_total / 100;
+
+  // const oderPrice = session.amount_total / 100;
 
   const cart = await CartModel.findById(cartId);
   const user = await userModel.findOne({ email: session.customer_email });
@@ -183,8 +182,7 @@ const createOrder = async (session) => {
   const order = await OrderModel.create({
     user: user._id,
     cartProducts: cart.cartProducts,
-    shippingAddress,
-    totalOrderPrice: oderPrice,
+    // totalOrderPrice: oderPrice,
     isPaid: true,
     paidAt: Date.now(),
     paymentMethodType: "card",
