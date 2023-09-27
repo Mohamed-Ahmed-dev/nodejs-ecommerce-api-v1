@@ -163,7 +163,7 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
     cancel_url: `${req.protocol}://${req.get("host")}/cart`,
     customer_email: req.user.email,
     client_reference_id: req.params.cartId,
-    metadata: req.body.shippingAddressId,
+    metadata: req.body.shippingAddress,
   });
 
   // 4) send session to response
@@ -173,41 +173,36 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // @desc    Create online order function
 const createOrder = async (session) => {
   const cartId = session.client_reference_id;
-  const orderPrice = session.amount_total / 100;
+  const shippingAddress = session.metadata;
+  const oderPrice = session.amount_total / 100;
 
-  // 1-get cart using cart Id
   const cart = await CartModel.findById(cartId);
+  const user = await userModel.findOne({ email: session.customer_email });
 
-  // 2-get user
-  const user = await userModel.findOne({
-    email: session.customer_email,
+  // 3) Create order with default paymentMethodType card
+  const order = await OrderModel.create({
+    user: user._id,
+    cartProducts: cart.cartProducts,
+    shippingAddress,
+    totalOrderPrice: oderPrice,
+    isPaid: true,
+    paidAt: Date.now(),
+    paymentMethodType: "card",
   });
 
-  // 3-create order with defult payment Method "card"
-  let order;
-  if (cart.cartProducts.length > 0) {
-    order = await OrderModel.create({
-      user: user._id,
-      cartProducts: cart.cartProducts,
-      shippingAddress: session.metadata,
-      totalOrderPrice: orderPrice,
-      isPaid: true,
-      paidAt: Date.now(),
-      paymentMethod: "card",
-    });
-  }
-  // 4-after creating order , decrement quantity and increment sold
+  // 4) After creating order, decrement product quantity, increment product sold
   if (order) {
-    const bulkOption = cart.cartProducts.map((item) => ({
+    const bulkOption = cart.cartItems.map((item) => ({
       updateOne: {
         filter: { _id: item.product },
         update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
       },
     }));
     await ProductModel.bulkWrite(bulkOption, {});
+
+    // 5) Clear cart depend on cartId
+    await CartModel.findByIdAndDelete(cartId);
   }
-  // 5-clear user cart
-  await CartModel.findByIdAndDelete(cartId);
 };
 
 // @desc    this webhook will run when payment completed
